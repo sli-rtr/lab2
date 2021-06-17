@@ -1,0 +1,253 @@
+<?xml version="1.0" ?>
+<robot name="UR5e">
+    <joint name="default_tcp-to-rtr_flange" type="fixed">
+        <origin xyz="0 0 0" rpy="3.14159 -3.14159 1.5708" />
+        <parent link="default_tcp" />
+        <child link="rtr_flange" />
+    </joint>
+    <joint name="elbow_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-3.141593" upper="3.141593" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="-0.425 0 0" rpy="0 -0 0" />
+        <parent link="upper_arm" />
+        <child link="forearm" />
+    </joint>
+    <joint name="shoulder_lift_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0.1625" rpy="1.5708 -0 0" />
+        <parent link="shoulder" />
+        <child link="upper_arm" />
+    </joint>
+    <joint name="shoulder_pan_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0" rpy="0 -0 0" />
+        <parent link="base" />
+        <child link="shoulder" />
+    </joint>
+    <joint name="wrist_1_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="-0.3922 0 0" rpy="0 -0 0" />
+        <parent link="forearm" />
+        <child link="wrist_1" />
+    </joint>
+    <joint name="wrist_2_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0.1333" rpy="1.5708 -0 0" />
+        <parent link="wrist_1" />
+        <child link="wrist_2" />
+    </joint>
+    <joint name="wrist_3-to-default_tcp" type="fixed">
+        <origin xyz="0 0 0.0996" rpy="0 -0 0" />
+        <parent link="wrist_3" />
+        <child link="default_tcp" />
+    </joint>
+    <joint name="wrist_3_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0.0997" rpy="-1.5708 -0 0" />
+        <parent link="wrist_2" />
+        <child link="wrist_3" />
+    </joint>
+    <link name="base">
+        <cad>
+            <geometry>
+                <data filename="UR5e/geometry/cad/base.cdx" />
+            </geometry>
+        </cad>
+        <violet>
+            <geometry>
+                <data filename="UR5e/geometry/violet/base.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="UR5e/geometry/dilated/base.dae" />
+            </geometry>
+            <dilation distance="0.000000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="UR5e/geometry/visual/base.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="UR5e/geometry/collision/base.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="default_tcp" />
+    <link name="forearm">
+        <cad>
+            <geometry>
+                <data filename="UR5e/geometry/cad/forearm.cdx" />
+            </geometry>
+        </cad>
+        <violet>
+            <geometry>
+                <data filename="UR5e/geometry/violet/forearm.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="UR5e/geometry/dilated/forearm.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="UR5e/geometry/visual/forearm.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="UR5e/geometry/collision/forearm.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="rtr_flange" />
+    <link name="shoulder">
+        <cad>
+            <geometry>
+                <data filename="UR5e/geometry/cad/shoulder.cdx" />
+            </geometry>
+        </cad>
+        <violet>
+            <geometry>
+                <data filename="UR5e/geometry/violet/shoulder.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="UR5e/geometry/dilated/shoulder.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="UR5e/geometry/visual/shoulder.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="UR5e/geometry/collision/shoulder.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="upper_arm">
+        <cad>
+            <geometry>
+                <data filename="UR5e/geometry/cad/upper_arm.cdx" />
+            </geometry>
+        </cad>
+        <violet>
+            <geometry>
+                <data filename="UR5e/geometry/violet/upper_arm.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="UR5e/geometry/dilated/upper_arm.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="UR5e/geometry/visual/upper_arm.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="UR5e/geometry/collision/upper_arm.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="wrist_1">
+        <cad>
+            <geometry>
+                <data filename="UR5e/geometry/cad/wrist_1.cdx" />
+            </geometry>
+        </cad>
+        <violet>
+            <geometry>
+                <data filename="UR5e/geometry/violet/wrist_1.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="UR5e/geometry/dilated/wrist_1.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="UR5e/geometry/visual/wrist_1.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="UR5e/geometry/collision/wrist_1.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="wrist_2">
+        <cad>
+            <geometry>
+                <data filename="UR5e/geometry/cad/wrist_2.cdx" />
+            </geometry>
+        </cad>
+        <violet>
+            <geometry>
+                <data filename="UR5e/geometry/violet/wrist_2.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="UR5e/geometry/dilated/wrist_2.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="UR5e/geometry/visual/wrist_2.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="UR5e/geometry/collision/wrist_2.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="wrist_3">
+        <cad>
+            <geometry>
+                <data filename="UR5e/geometry/cad/wrist_3.cdx" />
+            </geometry>
+        </cad>
+        <violet>
+            <geometry>
+                <data filename="UR5e/geometry/violet/wrist_3.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="UR5e/geometry/dilated/wrist_3.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="UR5e/geometry/visual/wrist_3.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="UR5e/geometry/collision/wrist_3.dae" />
+            </geometry>
+        </collision>
+    </link>
+</robot>

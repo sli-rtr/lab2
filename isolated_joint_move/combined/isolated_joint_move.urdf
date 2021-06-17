@@ -1,0 +1,394 @@
+<?xml version="1.0" ?>
+<robot name="isolated_joint_move">
+    <joint name="Robot1_base_to_a" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627992" rpy="1.5708 3.01992e-07 1.17647e-12" />
+        <parent link="Robot1_base" />
+        <child link="a" />
+    </joint>
+    <joint name="Robot1_base_to_b" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627992" rpy="-1.57079 -3.14159 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="b" />
+    </joint>
+    <joint name="Robot1_base_to_c" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627992" rpy="1.5708 -3.01994e-07 3.0199e-07" />
+        <parent link="Robot1_base" />
+        <child link="c" />
+    </joint>
+    <joint name="Robot1_base_to_d" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627992" rpy="-1.57079 -3.14159 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="d" />
+    </joint>
+    <joint name="Robot1_base_to_e" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627992" rpy="-1.57079 3.14159 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="e" />
+    </joint>
+    <joint name="Robot1_base_to_f" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627992" rpy="-1.57079 -3.14159 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="f" />
+    </joint>
+    <joint name="Robot1_base_to_g" type="fixed">
+        <origin xyz="-0.118374 -0.232899 -0.101587" rpy="1.57079 -2.18166 5.96046e-06" />
+        <parent link="Robot1_base" />
+        <child link="g" />
+    </joint>
+    <joint name="Robot1_base_to_h" type="fixed">
+        <origin xyz="-0.0905519 -0.2329 0.390327" rpy="-1.5708 0.349066 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="h" />
+    </joint>
+    <joint name="Robot1_base_to_i" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627993" rpy="-1.57079 -3.14159 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="i" />
+    </joint>
+    <joint name="Robot1_base_to_j" type="fixed">
+        <origin xyz="-0.612226 -0.232898 -0.387897" rpy="-1.57079 -2.53073 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="j" />
+    </joint>
+    <joint name="Robot1_base_to_k" type="fixed">
+        <origin xyz="0.82278 -0.2329 0.190596" rpy="1.57079 -3.05433 7.15256e-07" />
+        <parent link="Robot1_base" />
+        <child link="k" />
+    </joint>
+    <joint name="Robot1_base_to_l" type="fixed">
+        <origin xyz="0.8172 -0.2329 0.262199" rpy="1.57079 3.14159 4.76837e-07" />
+        <parent link="Robot1_base" />
+        <child link="l" />
+    </joint>
+    <joint name="Robot1_base_to_m" type="fixed">
+        <origin xyz="0.742533 0.413162 0.262199" rpy="1.57079 3.14159 0.785399" />
+        <parent link="Robot1_base" />
+        <child link="m" />
+    </joint>
+    <joint name="Robot1_base_to_n" type="fixed">
+        <origin xyz="-0.535825 0.659507 0.262199" rpy="1.57079 3.14159 2.53073" />
+        <parent link="Robot1_base" />
+        <child link="n" />
+    </joint>
+    <joint name="Robot1_base_to_o" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627993" rpy="-1.57079 3.14159 3.14159" />
+        <parent link="Robot1_base" />
+        <child link="o" />
+    </joint>
+    <joint name="Robot1_base_to_p" type="fixed">
+        <origin xyz="-0.8172 -0.232899 0.0627993" rpy="1.5708 6.27833e-07 2.35607e-12" />
+        <parent link="Robot1_base" />
+        <child link="p" />
+    </joint>
+    <joint name="Robot1_default_tcp-to-rtr_flange" type="fixed">
+        <origin xyz="0 0 0" rpy="3.14159 -3.14159 1.5708" />
+        <parent link="Robot1_default_tcp" />
+        <child link="Robot1_rtr_flange" />
+    </joint>
+    <joint name="Robot1_default_tcp_to_tcp" type="fixed">
+        <origin xyz="0 0 0" rpy="0 -0 0" />
+        <parent link="Robot1_default_tcp" />
+        <child link="tcp" />
+    </joint>
+    <joint name="Robot1_elbow_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-3.141593" upper="3.141593" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="-0.425 0 0" rpy="0 -0 0" />
+        <parent link="Robot1_upper_arm" />
+        <child link="Robot1_forearm" />
+    </joint>
+    <joint name="Robot1_shoulder_lift_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0.1625" rpy="1.5708 -0 0" />
+        <parent link="Robot1_shoulder" />
+        <child link="Robot1_upper_arm" />
+    </joint>
+    <joint name="Robot1_shoulder_pan_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0" rpy="0 -0 0" />
+        <parent link="Robot1_base" />
+        <child link="Robot1_shoulder" />
+    </joint>
+    <joint name="Robot1_wrist_1_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="-0.3922 0 0" rpy="0 -0 0" />
+        <parent link="Robot1_forearm" />
+        <child link="Robot1_wrist_1" />
+    </joint>
+    <joint name="Robot1_wrist_2_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0.1333" rpy="1.5708 -0 0" />
+        <parent link="Robot1_wrist_1" />
+        <child link="Robot1_wrist_2" />
+    </joint>
+    <joint name="Robot1_wrist_3-to-default_tcp" type="fixed">
+        <origin xyz="0 0 0.0996" rpy="0 -0 0" />
+        <parent link="Robot1_wrist_3" />
+        <child link="Robot1_default_tcp" />
+    </joint>
+    <joint name="Robot1_wrist_3_joint" type="revolute">
+        <axis xyz="0 0 1" />
+        <limit lower="-6.283185" upper="6.283185" effort="1" velocity="3.141593" acceleration="5.235988" jerk="50.000000" />
+        <origin xyz="0 0 0.0997" rpy="-1.5708 -0 0" />
+        <parent link="Robot1_wrist_2" />
+        <child link="Robot1_wrist_3" />
+    </joint>
+    <joint name="back_wall_to_world" type="fixed">
+        <origin xyz="-1.143 0.8382 -0.800095" rpy="3.14159 3.14159 1.5708" />
+        <parent link="mounting" />
+        <child link="back_wall" />
+    </joint>
+    <joint name="mounting_to_world" type="fixed">
+        <origin xyz="0 0 0" rpy="0 -0 0" />
+        <parent link="world" />
+        <child link="mounting" />
+    </joint>
+    <joint name="robot_to_mounting" type="fixed">
+        <origin xyz="0.127 0.127 0.0127" rpy="-1.31134e-07 4.95301e-23 3.61999e-06" />
+        <parent link="mounting" />
+        <child link="Robot1_base" />
+    </joint>
+    <joint name="stand_to_world" type="fixed">
+        <origin xyz="0.127 0.127 -0.8001" rpy="8.74228e-08 -0 1.5708" />
+        <parent link="mounting" />
+        <child link="stand" />
+    </joint>
+    <joint name="table_to_world" type="fixed">
+        <origin xyz="0.323848 -0.3302 -0.8001" rpy="-3.14159 -3.14159 3.14159" />
+        <parent link="mounting" />
+        <child link="table" />
+    </joint>
+    <link name="Robot1_base">
+        <violet>
+            <geometry>
+                <data filename="geometry/violet/Robot1_base.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="geometry/dilated/Robot1_base.dae" />
+            </geometry>
+            <dilation distance="0.000000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/Robot1_base.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/Robot1_base.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Robot1_default_tcp" />
+    <link name="Robot1_forearm">
+        <violet>
+            <geometry>
+                <data filename="geometry/violet/Robot1_forearm.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="geometry/dilated/Robot1_forearm.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/Robot1_forearm.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/Robot1_forearm.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Robot1_rtr_flange" />
+    <link name="Robot1_shoulder">
+        <violet>
+            <geometry>
+                <data filename="geometry/violet/Robot1_shoulder.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="geometry/dilated/Robot1_shoulder.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/Robot1_shoulder.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/Robot1_shoulder.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Robot1_upper_arm">
+        <violet>
+            <geometry>
+                <data filename="geometry/violet/Robot1_upper_arm.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="geometry/dilated/Robot1_upper_arm.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/Robot1_upper_arm.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/Robot1_upper_arm.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Robot1_wrist_1">
+        <violet>
+            <geometry>
+                <data filename="geometry/violet/Robot1_wrist_1.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="geometry/dilated/Robot1_wrist_1.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/Robot1_wrist_1.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/Robot1_wrist_1.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Robot1_wrist_2">
+        <violet>
+            <geometry>
+                <data filename="geometry/violet/Robot1_wrist_2.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="geometry/dilated/Robot1_wrist_2.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/Robot1_wrist_2.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/Robot1_wrist_2.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Robot1_wrist_3">
+        <violet>
+            <geometry>
+                <data filename="geometry/violet/Robot1_wrist_3.vt" />
+            </geometry>
+        </violet>
+        <dilated>
+            <geometry>
+                <mesh filename="geometry/dilated/Robot1_wrist_3.dae" />
+            </geometry>
+            <dilation distance="0.015000" />
+        </dilated>
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/Robot1_wrist_3.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/Robot1_wrist_3.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="a" />
+    <link name="b" />
+    <link name="back_wall">
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/back_wall.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/back_wall.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="c" />
+    <link name="d" />
+    <link name="e" />
+    <link name="f" />
+    <link name="g" />
+    <link name="h" />
+    <link name="i" />
+    <link name="j" />
+    <link name="k" />
+    <link name="l" />
+    <link name="m" />
+    <link name="mounting">
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/mounting.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/mounting.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="n" />
+    <link name="o" />
+    <link name="p" />
+    <link name="stand">
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/stand.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/stand.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="table">
+        <visual>
+            <geometry>
+                <mesh filename="geometry/visual/table.dae" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="geometry/collision/table.dae" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="tcp" />
+    <link name="world" />
+</robot>
