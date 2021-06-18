@@ -93,7 +93,7 @@ class ApiHelper(object):
             # This means something went wrong.
             raise ApiError(f'POST {url} {resp.status_code}')
 
-    def send_patch_request(self,extension):
+    def send_patch_request(self,extension,payload):
         '''
         This function sends a patch request to the passed URL extension
 
@@ -101,7 +101,8 @@ class ApiHelper(object):
             extension (str): the suffix, after http://<ip_address>, of the URL
         '''
         url = f'http://{self.ip_adr}:3000{extension}'
-        resp = requests.patch(url)
+        # kwargs['partial'] = True
+        resp = requests.patch(url, json=payload)
         print(f'\n[INFO] Sent Patch request to {url}')
 
         if resp.status_code != 200:
@@ -145,7 +146,11 @@ class ApiHelper(object):
         self.send_post_request2(self.installed_proj, files)
 
     def put_project_to_group(self,group,project):
+        '''
+        # TODO: description
 
+        Parameters:
+        '''
         split_string = self.group_proj.split(':')
         prefix = split_string[0]
         group = '%s/projects/'%(group)
@@ -154,8 +159,16 @@ class ApiHelper(object):
         group_project_string = prefix + group + project
         self.send_put_request(group_project_string)
 
+    def patch_robot_params(self,project,payload):
+        # data = {'connection_type': connection}
 
-
+        # data =
+        extension,place_holer = self.proj_details.split(':')
+        extension = extension + project + '/'
+        # print(extension)
+        # print(payload)
+        self.send_patch_request(extension, payload) # robot controller
+        # self.send_patch_request(extension, {'connection_type':1}) # internal simulated
 
 
 
