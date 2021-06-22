@@ -27,9 +27,9 @@ import update_limits
 from ApiHelper import ApiHelper
 import CommonOperations as cmn_ops
 
-def LaunchMoveToHub(cmdr,workstate,hub,speed,project):
+def LaunchMoveToHub(cmdr,workstate,hub,speed,corner_smoothing,project):
     # Execute this in a thread (MoveToHub function call)
-    res,seq = cmdr.MoveToHub(workstate,hub,speed,project_name=project)
+    res,seq = cmdr.MoveToHub(workstate,hub,speed,corner_smoothing,project_name=project)
     code = cmdr.WaitForMove(seq)
     return code
 
@@ -68,7 +68,8 @@ class limitTester():
         # else:
         #     self.project = project_name
         # Create a deconfliction group
-        self.group = self.helper.post_create_group('temp_group_name')
+        self.group_name = 'temp_group_name'
+        self.group = self.helper.post_create_group(self.group_name)
 
 
         # run test
@@ -114,6 +115,18 @@ class limitTester():
 
         self.initialized = True
 
+    def LaunchPickAndPlace(self, cmdr,workstate, hub, speed,corner_smoothing,project):
+        # Execute this in a thread (Pick and Place motion sequence)
+        res,seq = cmdr.MoveToHub(workstate,hub,speed,corner_smoothing,project_name=project)
+        # place_code = cmdr.WaitForMove(seq)
+        #
+        # if place_code != 0:
+        #     place_code = 1
+        # else:
+        #     place_code = 0
+
+        return cmdr.WaitForMove(seq)   # pick_code + place_code
+
     def init_logging(self,fp):
         self.fp = fp
         self.fp.write('\n')
@@ -122,6 +135,30 @@ class limitTester():
         log_msg = f'[{datetime.now()}] {msg}\n'
         self.fp.write(log_msg)
         print(log_msg)
+
+    def pick_and_place_part(self):
+        project = self.project
+        workstate = 'default_state'
+        hub_list = self.hub_list
+        hub_idx = self.hub_idxs
+
+        if hub_idx > len(hub_list)-1:
+            self.end_time = time.time()
+            self.unfinished = False
+            self.thread = None
+            self.log(f'Project {self.project} has finished!')
+        else:
+            hub = hub_list[hub_idx]
+            future = self.executor.submit(self.LaunchPickAndPlace,self.cmdr,workstate,hub, self.speed,self.corner_smoothing,project)
+            self.thread = future
+
+    def retract_to_staging(self):
+        self.log(f'Retracting project {self.project} to staging!')
+        project = self.project
+        workstate = 'default_state'
+        hub = self.hub_list[0]
+        future = self.executor.submit(LaunchMoveToHub,self.cmdr,workstate,hub,self.speed,self.corner_smoothing,project)
+        self.thread = future
 
     def binary_search(self):
         return
@@ -164,13 +201,13 @@ class limitTester():
         self.accel = [2.0, 2.0] # [low, high]
         self.jerk = [2.0, 2.0]
 
+        self.speed = 0.8
+        self.corner_smoothing = 0.0
+
 
         # starting_hub = self.hubs.
 
         # print(self.hubs)
-
-        # Set interupt behavior
-        self.cmdr.SetInterruptBehavior(self.replan_attempts,self.timeout,project_name=self.project)
 
         while True:
             # load project and add to group the first time
@@ -180,12 +217,15 @@ class limitTester():
             self.group_info = self.helper.get_group_info()
             self.project_info = self.helper.get_project_info(self.group_info[self.group]['projects'])
             self.hubs = self.project_info[self.project]['hubs']
-            hub_list = []
+            self.hub_list = []
 
             for hub in self.hubs:
-                hub_list.append(hub['name'])
-            hub_list.sort()
-            print(hub_list)
+                self.hub_list.append(hub['name'])
+            self.hub_list.sort()
+            print(self.hub_list)
+
+            # Set interupt behavior
+            self.cmdr.SetInterruptBehavior(self.replan_attempts,self.timeout,project_name=self.project)
 
             # set connection type: 0 for robot controller, 1 for simulated, 2 for third party sim
             self.helper.patch_robot_params(self.project, {'connection_type':0})
@@ -212,7 +252,7 @@ class limitTester():
 
             # Put each robot on the roadmap
             self.log('Putting robots on the roadmap...')
-            move_res = cmn_ops.put_on_roadmap(self.cmdr,self.project_info,self.group,hub=hub_list[0])
+            move_res = cmn_ops.put_on_roadmap(self.cmdr,self.project_info,self.group,hub=self.hub_list[0])
 
             if move_res != None:
                 if sum(move_res) != 0:
@@ -220,17 +260,60 @@ class limitTester():
                     return
 
 
+
             # self.executor = ThreadPoolExecutor(max_workers=4)
 
             # run through hubs
             # alphabetical order?
+            self.executor = ThreadPoolExecutor(max_workers=1)
+            self.thread = None
+            self.unfinished = True
+            self.end_time = None
+            self.hub_idxs = 0
+            self.interlocking = False
+
+            self.log(f'Beginning hub move task...')
+            self.start_time = time.time()
+
+            self.pick_and_place_part()
+
+            while self.unfinished:
+                if self.thread.done():
+                    code = self.thread.result()
+
+                    if code == self.cmdr.SUCCESS:
+                        if not self.interlocking:
+                            # If your previous move was not a retraction, that means you completed a pick and place move
+                            # and need to increase the hub idx
+                            self.log(f'Project {self.project} completed move to {self.hub_list[self.hub_idxs]}!')
+                            self.hub_idxs += 1
+                        self.pick_and_place_part()
+                        self.interlocking = False
+                    else:
+                        # The requested move was blocked by the other robot, so retract to the staging position
+                        self.retract_to_staging()
+                        self.interlocking = True
+
+            hub_time_str = f'{self.project} hub move task took: {self.end_time-self.start_time}'
+            self.log(hub_time_str)
 
 
+            # end operation mode, put into config mode
+            self.helper.put_config_mode()
 
+            # unload group
+            self.helper.put_unload_group(self.group_name)
 
+            # remove project from deconf group
+            self.helper.delete_proj_from_group(self.group_name, self.project)
 
+            # unload project
+            self.helper.delete_project(self.project)
 
             # save bin
+
+
+
 
 
             # if run successful
@@ -245,19 +328,16 @@ class limitTester():
             # edit project urdf
 
 
-            # unload project
-
-
-
             break
 
         # return determined values
 
 
-
-
         # clean up stuff
         # delete deconfliction group
+        self.helper.delete_group(self.group_name)
+
+
         return
 
 def main():

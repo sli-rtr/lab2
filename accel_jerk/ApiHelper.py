@@ -22,6 +22,7 @@ class ApiHelper(object):
     teleport_robot = '/api/v1/projects/:project/hubs/:hub/'
 
     group_proj = '/api/v1/groups/:group/projects/:project/'
+    group_details = '/api/v1/groups/:group/'
 
     def __init__(self,ip_adr):
         self.ip_adr = ip_adr
@@ -169,6 +170,26 @@ class ApiHelper(object):
         # print(payload)
         self.send_patch_request(extension, payload) # robot controller
         # self.send_patch_request(extension, {'connection_type':1}) # internal simulated
+
+    def delete_proj_from_group(self,group,project):
+        split_string = self.group_proj.split(':')
+        prefix = split_string[0]
+        group = '%s/projects/'%(group)
+        project = '%s'%(project)
+
+        group_project_string = prefix + group + project
+        self.send_delete_request(group_project_string)
+
+    def delete_project(self,project):
+        extension,place_holer = self.proj_details.split(':')
+        extension = extension + project + '/'
+
+        self.send_delete_request(extension)
+
+    def delete_group(self,group):
+        extension,place_holer = self.group_details.split(':')
+        extension = extension + group + '/'
+        self.send_delete_request(extension)
 
 
 

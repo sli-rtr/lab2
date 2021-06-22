@@ -78,14 +78,17 @@ def put_on_roadmap(cmdr,project_info,group,hub='home'):
         move_res (list): a list of the move result value from each offroad to hub call. 0 means success
     '''
     code, data = cmdr.GetMode()
-    if data != 'OPERATION':
-        print('Put controller in operation mode!')
-        return
+
+    # print(data)
+    # if data != 'OPERATION':
+    #     print('Put controller in operation mode!')
+    #     return
 
     move_res = []
-    for project_name,info in project_info.items():
+    for name,info in project_info.items():
+        print(name)
         workstate = info['workstates'][0]
-        hub_res, hub_seq = cmdr.OffroadToHub(workstate, hub, "low", 240.0, True, 0.1, project_name=project_name)
+        hub_res, hub_seq = cmdr.OffroadToHub(workstate, hub, "low", 240.0, fallback_to_nominal=True, project_name=name, speed=0.1)
         move_res.append(cmdr.WaitForMove(hub_seq,timeout=240.0))
 
     return move_res
