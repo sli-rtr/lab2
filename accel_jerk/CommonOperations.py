@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from PythonApplianceCommander import PythonApplianceCommander
+from rtr_appliance.PythonApplianceCommander import PythonApplianceCommander
 import sys
 import time
 

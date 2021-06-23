@@ -19,13 +19,17 @@
 import sys, os, time
 from datetime import datetime
 import argparse
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+import shutil
+from pathlib import Path, PurePath
 
-from PythonApplianceCommander import PythonApplianceCommander
+from rtr_appliance.PythonApplianceCommander import PythonApplianceCommander
 import update_limits
 from ApiHelper import ApiHelper
 import CommonOperations as cmn_ops
+
+from rtr_control_ros.log_plots import *
+from rtr_control_ros.robot_logs import RobotLogs
 
 def LaunchMoveToHub(cmdr,workstate,hub,speed,corner_smoothing,project):
     # Execute this in a thread (MoveToHub function call)
@@ -71,48 +75,7 @@ class limitTester():
         self.group_name = 'temp_group_name'
         self.group = self.helper.post_create_group(self.group_name)
 
-
         # run test
-
-
-
-
-
-
-
-        # # Request the group info from the group currently loaded on the control panel
-        # self.group_info = self.helper.get_group_info()
-        # self.group = None
-        # for group_name,info in self.group_info.items():
-        #     if info['loaded']:
-        #         self.group = group_name
-        #         self.project_names = info['projects']
-        #
-        # # Nested dictionary that contains all projects information of the form:
-        # # {project name: {workstates: [str], hubs: [str]}
-        # self.project_info = self.helper.get_project_info(self.group_info[self.group]['projects'])
-        #
-        # # Call startup sequence which calls InitGroup for each project and then BeginOperationMode
-        # self.log('Startup sequence...')
-        # resp = cmn_ops.startup_sequence(self.cmdr,self.project_info,self.group)
-        # if resp != 0:
-        #     print(f'Startup sequence failed with error code: {resp}')
-        #     return
-        #
-        # # Put each robot on the roadmap
-        # self.log('Putting robots on the roadmap...')
-        # move_res = cmn_ops.put_on_roadmap(self.cmdr,self.project_info,self.group,hub='staging')
-        #
-        # if move_res != None:
-        #     if sum(move_res) != 0:
-        #         self.log('Failed to put the robots on the roadmap')
-        #         return
-        #
-        # # Set interupt behavior
-        # for project_idx in range(0,len(self.project_info)):
-        #     name = self.project_names[project_idx]
-        #     self.cmdr.SetInterruptBehavior(self.replan_attempts,self.timeout,project_name=name)
-
         self.initialized = True
 
     def LaunchPickAndPlace(self, cmdr,workstate, hub, speed,corner_smoothing,project):
@@ -198,10 +161,14 @@ class limitTester():
 
         # this function loops
         # iterate through accel/jerk values
-        self.accel = [2.0, 2.0] # [low, high]
-        self.jerk = [2.0, 2.0]
+        accel_min = 1.0
+        accel_max = 1.0
+        jerk_min = 1.0
+        jerk_max = 1.0
+        # self.accel = [2.0, 2.0] # [low, high]
+        # self.jerk = [2.0, 2.0]
 
-        self.speed = 0.8
+        self.speed = 0.99
         self.corner_smoothing = 0.0
 
 
@@ -228,17 +195,17 @@ class limitTester():
             self.cmdr.SetInterruptBehavior(self.replan_attempts,self.timeout,project_name=self.project)
 
             # set connection type: 0 for robot controller, 1 for simulated, 2 for third party sim
-            self.helper.patch_robot_params(self.project, {'connection_type':0})
-            # self.helper.patch_robot_params(self.project, {'robot_params':{'string_params':{'robot_address':'192.168.1.19'}}})
-            self.helper.patch_robot_params(self.project, {"robot_params":{
-                "bool_params":{"using_urcap":False},
-                "double_params":{},
-                "float_params":{"max_tool_speed":5},
-                "int_params":{"urcap_float_register":0},
-                "string_params":{"robot_address":"192.168.1.19","sim_ip_address":"127.0.0.1"},
-                "uint_params":{"sim_command_port":30003,"sim_data_port":30004}
-                }})
-            # self.helper.patch_robot_params(self.project, {'connection_type':1}) # internal simulated
+            # self.helper.patch_robot_params(self.project, {'connection_type':0})
+            # self.helper.patch_robot_params(self.project, {"robot_params":{
+            #     "bool_params":{"using_urcap":False},
+            #     "double_params":{},
+            #     "float_params":{"max_tool_speed":5},
+            #     "int_params":{"urcap_float_register":0},
+            #     "string_params":{"robot_address":"192.168.1.19","sim_ip_address":"127.0.0.1"},
+            #     "uint_params":{"sim_command_port":30003,"sim_data_port":30004}
+            #     }})
+
+            self.helper.patch_robot_params(self.project, {'connection_type':1}) # internal simulated
 
             # Load deconfliction group
             self.helper.put_load_group(self.group)
@@ -304,13 +271,38 @@ class limitTester():
             # unload group
             self.helper.put_unload_group(self.group_name)
 
+            # save bin BEFORE deleting project??
+            # create/prompt for directory
+            # bins located at ~/rapidplan/install/var/log/rtr/robots/[project].bin
+            # do megadebs have bin files?
+            path_to_bin = os.path.join('/home/samuelli/rapidplan/install/var/log/rtr/robots/', self.project + '.bin')
+            aj_name = os.path.join(self.project+'_'+str(accel_max)+'_'+str(jerk_max)+'.bin')
+            # check bin exists
+            print(path_to_bin)
+            print(aj_name)
+            if os.path.isfile(path_to_bin):
+                print("moving bin")
+                # create dir
+                Path('./bin_temp').mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path_to_bin, os.path.join('./bin_temp/', aj_name))
+            else:
+                print("Error bin does not exist")
+
+
             # remove project from deconf group
             self.helper.delete_proj_from_group(self.group_name, self.project)
 
             # unload project
             self.helper.delete_project(self.project)
 
-            # save bin
+            print("-------------------------------\n\n\n\nSUCCEEDED\n\n\n\n-------------------------")
+            print(accel_max)
+            print(jerk_max)
+
+            accel_min = accel_max
+            jerk_min = jerk_max
+            accel_max *= 2
+            jerk_max *= 2
 
 
 
@@ -326,9 +318,13 @@ class limitTester():
                 # set high to midpoint
 
             # edit project urdf
+            update_limits.parse(proj, accel_max, jerk_max)
 
 
-            break
+            # break
+
+
+            # break
 
         # return determined values
 
