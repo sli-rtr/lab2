@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import requests
-# from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 class ApiError(Exception):
     """An API Error Exception"""
@@ -70,24 +69,11 @@ class ApiHelper(object):
             extension (str): the suffix, after http://<ip_address>, of the URL
         '''
         url = f'http://{self.ip_adr}:3000{extension}'
-        resp = requests.post(url, json=payload)
-        print(f'\n[INFO] Sent Post request to {url}')
 
-        if resp.status_code != 200:
-            # This means something went wrong.
-            raise ApiError(f'POST {url} {resp.status_code}')
-
-
-            ### fix this shit
-    def send_post_request2(self,extension,payload):
-        '''
-        This function sends a post request to the passed URL extension
-
-        Parameters:
-            extension (str): the suffix, after http://<ip_address>, of the URL
-        '''
-        url = f'http://{self.ip_adr}:3000{extension}'
-        resp = requests.post(url, files=payload)
+        if payload.get('name'):
+            resp = requests.post(url, json=payload)
+        else:
+            resp = requests.post(url, files=payload)
         print(f'\n[INFO] Sent Post request to {url}')
 
         if resp.status_code != 200:
@@ -141,10 +127,8 @@ class ApiHelper(object):
 
         Parameters:
         '''
-        # m = MultipartEncoder(fields)
         files = {'project_zip': open(fname, 'rb')}
-        ### fix this shit
-        self.send_post_request2(self.installed_proj, files)
+        self.send_post_request(self.installed_proj, files)
 
     def put_project_to_group(self,group,project):
         '''
@@ -191,6 +175,10 @@ class ApiHelper(object):
         extension = extension + group + '/'
         self.send_delete_request(extension)
 
+    def get_installed_groups(self):
+        groups = self.send_get_request(self.groups)
+        group_list = [g['GroupName'] for g in groups]
+        return group_list
 
 
 

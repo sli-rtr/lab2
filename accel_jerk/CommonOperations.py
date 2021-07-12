@@ -19,7 +19,7 @@ def startup_sequence(cmdr,project_info,group):
                            Of the form {'InitGroupResponses':[int],'BeginOperationResponse':int}
     '''
     code, data = cmdr.GetMode()
-    if data == 'OPERATION':
+    if data.strip() == 'OPERATION':
         print('Controller already in operation mode!')
         return 0
 
@@ -79,16 +79,15 @@ def put_on_roadmap(cmdr,project_info,group,hub='home'):
     '''
     code, data = cmdr.GetMode()
 
-    # print(data)
-    # if data != 'OPERATION':
-    #     print('Put controller in operation mode!')
-    #     return
+    if data.strip() != 'OPERATION':
+        print('Put controller in operation mode!')
+        return
 
     move_res = []
     for name,info in project_info.items():
         print(name)
         workstate = info['workstates'][0]
-        hub_res, hub_seq = cmdr.OffroadToHub(workstate, hub, "low", 240.0, fallback_to_nominal=True, project_name=name, speed=0.1)
+        hub_res, hub_seq = cmdr.OffroadToHub(workstate, hub, "low", 1000.0, fallback_to_nominal=True, project_name=name, speed=0.1)
         move_res.append(cmdr.WaitForMove(hub_seq,timeout=240.0))
 
     return move_res
@@ -106,7 +105,7 @@ def attempt_fault_recovery(cmdr,project_info,group,hub='home'):
         hub (string): Hub name to move the all robots to. Default is 'home'
     '''
     code, data = cmdr.GetMode()
-    if data != 'FAULT':
+    if data.strip() != 'FAULT':
         print('Controller is not in Fault mode!')
         return
 
