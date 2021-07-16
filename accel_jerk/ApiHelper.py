@@ -145,6 +145,11 @@ class ApiHelper(object):
         self.send_put_request(group_project_string)
 
     def patch_robot_params(self,project,payload):
+        '''
+        # TODO: description
+
+        Parameters:
+        '''
         # data = {'connection_type': connection}
 
         # data =
@@ -156,6 +161,11 @@ class ApiHelper(object):
         # self.send_patch_request(extension, {'connection_type':1}) # internal simulated
 
     def delete_proj_from_group(self,group,project):
+        '''
+        # TODO: description
+
+        Parameters:
+        '''
         split_string = self.group_proj.split(':')
         prefix = split_string[0]
         group = '%s/projects/'%(group)
@@ -165,17 +175,32 @@ class ApiHelper(object):
         self.send_delete_request(group_project_string)
 
     def delete_project(self,project):
+        '''
+        # TODO: description
+
+        Parameters:
+        '''
         extension,place_holer = self.proj_details.split(':')
         extension = extension + project + '/'
 
         self.send_delete_request(extension)
 
     def delete_group(self,group):
+        '''
+        # TODO: description
+
+        Parameters:
+        '''
         extension,place_holer = self.group_details.split(':')
         extension = extension + group + '/'
         self.send_delete_request(extension)
 
     def get_installed_groups(self):
+        '''
+        # TODO: description
+
+        Parameters:
+        '''
         groups = self.send_get_request(self.groups)
         group_list = [g['GroupName'] for g in groups]
         return group_list

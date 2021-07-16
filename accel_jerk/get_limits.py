@@ -9,6 +9,10 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import shutil
 from pathlib import Path, PurePath
+from scipy.optimize import minimize
+import scipy.optimize
+# from scipy.optimize import differential_evolution
+import matplotlib.pyplot as plt
 
 from rtr_appliance.PythonApplianceCommander import PythonApplianceCommander
 import update_limits
@@ -232,8 +236,8 @@ class limitTester():
         hub_time_str = f'{self.project} hub move task took: {self.end_time-self.start_time}'
         self.log(hub_time_str)
 
-    def run_test(self,proj,controller,reference):
-        return
+    # def run_test(self,proj,controller,reference):
+    #     return
 
     def save_bin(self, accel, jerk):
         # save bin BEFORE deleting project??
@@ -254,8 +258,10 @@ class limitTester():
             self.log('Bin does not exist, skipping')
 
     def binary_search(self, proj, controller, reference, accel, mse, val_found):
-        midpoints = np.zeros(self.num_joints)
+        midpoints = np.zeros((self.num_joints, 3))
         midpoint_mse = {}
+
+        midpoint_set = set()
 
         if sum(val_found) == self.num_joints:
             return
@@ -264,9 +270,16 @@ class limitTester():
             if val_found[i]:
                 continue
             # how precise we need to be
-            if accel[i][2]-accel[i][0] > 2:
+            if accel[i][4]-accel[i][0] > 1:
                 # midpoint = (accel[i][2]+accel[i][0])/2
-                midpoints[i] = (accel[i][2]+accel[i][0])/2
+                # midpoints[i] = (accel[i][4]+accel[i][0])/2
+                midpoints[i][1] = round((accel[i][4]+accel[i][0])/2)
+                midpoints[i][0] = round((accel[i][0]+midpoints[i][1])/2)
+                midpoints[i][2] = round((accel[i][4]+midpoints[i][1])/2)
+
+                midpoint_set.add(midpoints[i][0])
+                midpoint_set.add(midpoints[i][1])
+                midpoint_set.add(midpoints[i][2])
             else:
                 val_found[i] = 1
                 # midpoints[i] = 0
@@ -275,46 +288,47 @@ class limitTester():
                 print('accel',accel[i][0])
                 # continue
 
-        midpoint_set = set(midpoints)
+        # midpoint_set = set(midpoints)
 
         for i in midpoint_set:
             # skip 0 values, means we are within threshold
             if i == 0:
                 continue
 
-            update_limits.parse(proj, i, 5000.0)
-
-            # add group
-            self.add_group('accel_jerk_test')
-            # load project and add to group the first time
-            self.add_project(proj, controller)
-            # load group and run through hubs
-            self.load_run_through_hubs()
-
-            # end operation mode, put into config mode
-            self.helper.put_config_mode()
-            # unload group
-            self.helper.put_unload_group(self.group_name)
-
-            self.save_bin(i, 5000.0)
+            # update_limits.parse(proj, i, 5000.0)
+            #
+            # # add group
+            # self.add_group('accel_jerk_test')
+            # # load project and add to group the first time
+            # self.add_project(proj, controller)
+            # # load group and run through hubs
+            # self.load_run_through_hubs()
+            #
+            # # end operation mode, put into config mode
+            # self.helper.put_config_mode()
+            # # unload group
+            # self.helper.put_unload_group(self.group_name)
+            #
+            # self.save_bin(i, 5000.0)
 
             # # test data here
             # # get measure of difference between commanded route and reference
+            dataname = os.path.join('./bin_temp/'+'isolated_joint_move_Robot1'+'_'+str(i)+'_'+str(5000.0)+'.bin')
 
-            pos, vel, t = compare_data.get_data(reference, self.path_to_bin)
+            pos, vel, t = compare_data.get_data(reference, dataname)
             mse_mid = compare_data.get_mse(pos)
-            print(mse_mid)
+            # print(mse_mid)
 
-            # remove project from deconf group
-            self.helper.delete_proj_from_group(self.group_name, self.project)
-
-            # unload project
-            self.helper.delete_project(self.project)
+            # # remove project from deconf group
+            # self.helper.delete_proj_from_group(self.group_name, self.project)
+            #
+            # # unload project
+            # self.helper.delete_project(self.project)
 
             # add to dict
             midpoint_mse[i] = mse_mid
 
-        print(midpoint_mse)
+        # print(midpoint_mse)
 
         for i in range(self.num_joints):
             if val_found[i]:
@@ -322,46 +336,143 @@ class limitTester():
             # # if joint done
             # if accel[i][1] == 0:
             #     continue
-            print(accel)
-            print(midpoints)
-            print(mse)
-            print(midpoint_mse)
-            accel[i][1] = midpoints[i]
+            # print(accel)
+            # print(midpoints)
+            # print(mse)
+            # print(midpoint_mse)
+            accel[i][1] = midpoints[i][0]
+            accel[i][2] = midpoints[i][1]
+            accel[i][3] = midpoints[i][2]
             # if midpoints[i] == 0: # bad fix... its because midpoint_mse = 0 does not exist in dict
             #     mse[i][1] = 0
             # else:
-            mse[i][1] = midpoint_mse[midpoints[i]][i]
+            mse[i][1] = midpoint_mse[midpoints[i][0]][i]
+            mse[i][2] = midpoint_mse[midpoints[i][1]][i]
+            mse[i][3] = midpoint_mse[midpoints[i][2]][i]
 
-        print(accel)
-        print(mse)
+        # print(accel)
+        # print(mse)
 
         # mse and accel_search_vals are known, we have a [low, mid, high] for each joint
         for i in range(self.num_joints):
             if val_found[i]:
                 continue
-            # # if joint done
-            # if accel[i][1] == 0:
-            #     continue
-            if mse[i][0] < mse[i][2]:
+            # # # if joint done
+            # # if accel[i][1] == 0:
+            # #     continue
+            # if mse[i][0] < mse[i][2]:
+            #     mse[i][2] = mse[i][1]
+            #     accel[i][2] = accel[i][1]
+            #     # print('searching', accel_search_vals[i][0], accel_search_vals[i][1])
+            #     # binary_search(accel_search_vals[i][0], accel_search_vals[i][1])
+            # else:
+            #     mse[i][0] = mse[i][1]
+            #     accel[i][0] = accel[i][1]
+            #     # print('searching', accel_search_vals[i][1], accel_search_vals[i][2])
+            #     # binary_search(accel_search_vals[i][1], accel_search_vals[i][2])
+            #
+            # mse[i][1] = 0
+            # accel[i][1] = 0
+
+            # print(accel)
+            # print(mse[i])
+
+            if mse[i][0] >= mse[i][1] and mse[i][1] >= mse[i][2] and mse[i][4] >= mse[i][3] and mse[i][3] >= mse[i][2]:
+                mse[i][0] = mse[i][1]
+                mse[i][4] = mse[i][3]
+
+                accel[i][0] = accel[i][1]
+                accel[i][4] = accel[i][3]
+                print("first")
+            elif mse[i][0] >= mse[i][1] and mse[i][1] <= mse[i][2] and mse[i][4] >= mse[i][3] and mse[i][3] >= mse[i][2]:
+                mse[i][4] = mse[i][2]
                 mse[i][2] = mse[i][1]
+
+                accel[i][4] = accel[i][2]
                 accel[i][2] = accel[i][1]
-                # print('searching', accel_search_vals[i][0], accel_search_vals[i][1])
-                # binary_search(accel_search_vals[i][0], accel_search_vals[i][1])
-            else:
+                print('second')
+            elif mse[i][0] >= mse[i][1] and mse[i][1] >= mse[i][2] and mse[i][4] >= mse[i][3] and mse[i][3] <= mse[i][2]:
+                mse[i][0] = mse[i][2]
+                mse[i][2] = mse[i][3]
+
+                accel[i][0] = accel[i][2]
+                accel[i][2] = accel[i][3]
+                print('third')
+            elif mse[i][1] > mse[i][0]:
                 mse[i][0] = mse[i][1]
                 accel[i][0] = accel[i][1]
-                # print('searching', accel_search_vals[i][1], accel_search_vals[i][2])
-                # binary_search(accel_search_vals[i][1], accel_search_vals[i][2])
+            elif mse[i][2] > mse[i][1] or mse[i][2] > mse[i][3]:
+                if mse[i][1] > mse[i][3]:
+                    mse[i][0] = mse[i][2]
+                    mse[i][2] = mse[i][3]
 
+                    accel[i][0] = accel[i][2]
+                    accel[i][2] = accel[i][3]
+                else:
+                    mse[i][4] = mse[i][2]
+                    mse[i][3] = mse[i][1]
+
+                    accel[i][4] = accel[i][2]
+                    accel[i][3] = accel[i][1]
+            elif mse[i][3] > mse[i][4]:
+                mse[i][4] = mse[i][3]
+                accel[i][4] = accel[i][3]
+            else:
+                print('fail')
+                print(mse[i])
+                print(accel[i])
             mse[i][1] = 0
+            mse[i][3] = 0
             accel[i][1] = 0
+            accel[i][3] = 0
 
         print(accel)
-        print(mse)
+        # print(mse)
+
+        # plt.plot(accel[4], mse[4])
+        plt.show()
 
         self.binary_search(proj, controller, reference, accel, mse, val_found)
 
         # return
+
+
+    # for scipy minimize function to compute mse
+    def compute_mse(self, accel, proj, controller, reference, joint, jerk=5000.0):
+        self.log(f'Computing MSE for accel: {accel} jerk: {jerk}')
+
+        # returns mse value for single joint at a/j
+        update_limits.parse(proj, accel, jerk)
+
+        # add group
+        self.add_group('accel_jerk_test')
+        # load project and add to group the first time
+        self.add_project(proj, controller)
+        # load group and run through hubs
+        self.load_run_through_hubs()
+
+        # end operation mode, put into config mode
+        self.helper.put_config_mode()
+        # unload group
+        self.helper.put_unload_group(self.group_name)
+
+        self.save_bin(accel, jerk)
+
+        # # test data here
+        # # get measure of difference between commanded route and reference
+
+        pos, vel, t = compare_data.get_data(reference, self.path_to_bin)
+        mse = compare_data.get_mse(pos)
+        # print(mse)
+
+        # remove project from deconf group
+        self.helper.delete_proj_from_group(self.group_name, self.project)
+
+        # unload project
+        self.helper.delete_project(self.project)
+
+        return mse[joint]
+
 
     def start(self,proj,controller,reference):
         '''
@@ -383,11 +494,49 @@ class limitTester():
         # self.accel = [2.0, 2.0] # [low, high]
         # self.jerk = [2.0, 2.0]
         # set project urdf
-        update_limits.parse(proj, accel_max, jerk_max)
+        # update_limits.parse(proj, accel_max, jerk_max)
 
         self.speed = 0.99
         self.corner_smoothing = 0.0
 
+
+        opt_time_start = time.time()
+
+        ### this will run and plot
+        # a = np.linspace(1, 16, 16)
+        # mse_vec = np.vectorize(self.compute_mse)
+        # y = mse_vec(a, proj, controller, reference, 5, jerk_max)
+        # plt.plot(a, y)
+        # plt.show()
+
+        ### this will plot existing data
+        # a = np.linspace(16, 64, 49)
+        # mse = []
+        #
+        # for i in range(16,65):
+        #     dataname = os.path.join('./bin_temp/'+'isolated_joint_move_Robot1'+'_'+str(i)+'.0_'+str(5000.0)+'.bin')
+        #     pos, vel, t = compare_data.get_data(reference, dataname)
+        #     mse.append(compare_data.get_mse(pos))
+        #     print('running')
+        #
+        # for i in range(6):
+        #     plt.subplot(6, 1, i+1)
+        #     data = [j[i] for j in mse]
+        #     plt.title('joint {}'.format(i))
+        #     plt.plot(a, data)
+        #
+        #
+        # plt.show()
+
+
+        ### scikit program
+        # res = minimize(self.compute_mse, accel_max, args=(proj, controller, reference, 5, jerk_max), method='Nelder-Mead', tol=0.5)
+        # res = scipy.optimize.differential_evolution(self.compute_mse, [(0, 64)], args=(proj, controller, reference, 1, jerk_max), tol=1.0)
+        # res = scipy.optimize.basinhopping(self.compute_mse, [16.0], stepsize=10.0, minimizer_kwargs={'args':(proj, controller, reference, 5, jerk_max)})
+        # print(res)
+
+
+        ### original program
         mse_prev = []
         mse_delta = []
 
@@ -397,37 +546,41 @@ class limitTester():
         max_found = []
 
         while True:
-            # add group
-            self.add_group('accel_jerk_test')
-            # load project and add to group the first time
-            self.add_project(proj, controller)
-            # load group and run through hubs
-            self.load_run_through_hubs()
-
-            # end operation mode, put into config mode
-            self.helper.put_config_mode()
-            # unload group
-            self.helper.put_unload_group(self.group_name)
-
-            self.save_bin(accel_max, jerk_max)
+            # # add group
+            # self.add_group('accel_jerk_test')
+            # # load project and add to group the first time
+            # self.add_project(proj, controller)
+            # # load group and run through hubs
+            # self.load_run_through_hubs()
+            #
+            # # end operation mode, put into config mode
+            # self.helper.put_config_mode()
+            # # unload group
+            # self.helper.put_unload_group(self.group_name)
+            #
+            # self.save_bin(accel_max, jerk_max)
 
             # # test data here
             # # get measure of difference between commanded route and reference
+            dataname = os.path.join('./bin_temp/'+'isolated_joint_move_Robot1'+'_'+str(accel_max)+'_'+str(5000.0)+'.bin')
 
-            pos, vel, t = compare_data.get_data(reference, self.path_to_bin)
+
+
+            pos, vel, t = compare_data.get_data(reference, dataname)
             mse = compare_data.get_mse(pos)
             self.num_joints = len(pos[0])
+            print(accel_max)
             print(mse)
 
-            # remove project from deconf group
-            self.helper.delete_proj_from_group(self.group_name, self.project)
+            # # remove project from deconf group
+            # self.helper.delete_proj_from_group(self.group_name, self.project)
+            #
+            # # unload project
+            # self.helper.delete_project(self.project)
 
-            # unload project
-            self.helper.delete_project(self.project)
-
-            print("-------------------------------\n\n\n\nSUCCEEDED\n\n\n\n-------------------------")
-            print(accel_max)
-            print(jerk_max)
+            # print("-------------------------------\n\n\n\nSUCCEEDED\n\n\n\n-------------------------")
+            # print(accel_max)
+            # print(jerk_max)
 
             # test the mse data
             # init on first run
@@ -436,16 +589,18 @@ class limitTester():
                 mse_delta = np.zeros(self.num_joints)
 
             # if len(accel_search_vals) == 0:
-                accel_search_vals = np.zeros((self.num_joints,3))
-                mse_search_vals = np.zeros((self.num_joints,3))
+                accel_search_vals = np.zeros((self.num_joints,5))
+                mse_search_vals = np.zeros((self.num_joints,5))
 
                 max_found = np.zeros(self.num_joints)
 
             for i in range(self.num_joints):
                 # store mse vals associated with accel
                 if max_found[i] == 0:
-                    mse_search_vals[i][:2] = mse_search_vals[i][1:]
-                    mse_search_vals[i][2] = mse[i]
+                    # 2 is unnecessary, can be temp
+                    mse_search_vals[i][0] = mse_search_vals[i][2]
+                    mse_search_vals[i][2] = mse_search_vals[i][4]
+                    mse_search_vals[i][4] = mse[i]
                     # print(mse_search_vals)
 
                 mse_delta[i] = mse[i]-mse_prev[i]
@@ -457,8 +612,8 @@ class limitTester():
                     # print('joint',i,'getting worse')
                     # add value to accel_search_vals the first time
                     # mse threshold? change magic number
-                    if accel_search_vals[i][2] == 0 and mse[i] < 1:
-                        accel_search_vals[i] = [accel_max/8, accel_max/4, accel_max/2]
+                    if accel_search_vals[i][4] == 0 and mse[i] < 1:
+                        accel_search_vals[i] = [accel_max/4, 0, 0, 0, accel_max]
                         max_found[i] = 1
 
                     # print(accel_search_vals)
@@ -483,28 +638,28 @@ class limitTester():
             # else
                 # set high to midpoint
 
-            # edit project urdf
-            update_limits.parse(proj, accel_max, jerk_max)
+            # # edit project urdf
+            # update_limits.parse(proj, accel_max, jerk_max)
 
             # break
 
 
 
         # mse and accel_search_vals are known, we have a [low, mid, high] for each joint
-        for i in range(self.num_joints):
-            if mse_search_vals[i][0] < mse_search_vals[i][2]:
-                mse_search_vals[i][2] = mse_search_vals[i][1]
-                accel_search_vals[i][2] = accel_search_vals[i][1]
-                # print('searching', accel_search_vals[i][0], accel_search_vals[i][1])
-                # binary_search(accel_search_vals[i][0], accel_search_vals[i][1])
-            else:
-                mse_search_vals[i][0] = mse_search_vals[i][1]
-                accel_search_vals[i][0] = accel_search_vals[i][1]
-                # print('searching', accel_search_vals[i][1], accel_search_vals[i][2])
-                # binary_search(accel_search_vals[i][1], accel_search_vals[i][2])
-
-            mse_search_vals[i][1] = 0
-            accel_search_vals[i][1] = 0
+        # for i in range(self.num_joints):
+        #     if mse_search_vals[i][0] < mse_search_vals[i][2]:
+        #         mse_search_vals[i][2] = mse_search_vals[i][1]
+        #         accel_search_vals[i][2] = accel_search_vals[i][1]
+        #         # print('searching', accel_search_vals[i][0], accel_search_vals[i][1])
+        #         # binary_search(accel_search_vals[i][0], accel_search_vals[i][1])
+        #     else:
+        #         mse_search_vals[i][0] = mse_search_vals[i][1]
+        #         accel_search_vals[i][0] = accel_search_vals[i][1]
+        #         # print('searching', accel_search_vals[i][1], accel_search_vals[i][2])
+        #         # binary_search(accel_search_vals[i][1], accel_search_vals[i][2])
+        #
+        #     mse_search_vals[i][1] = 0
+        #     accel_search_vals[i][1] = 0
 
         print(accel_search_vals)
         print(mse_search_vals)
@@ -517,9 +672,12 @@ class limitTester():
         # return determined values
 
 
-        # clean up stuff
-        # delete deconfliction group
-        self.helper.delete_group(self.group_name)
+        # # clean up stuff
+        # # delete deconfliction group
+        # self.helper.delete_group(self.group_name)
+
+        opt_time_str = f'optimization task took: {time.time()-opt_time_start} seconds'
+        self.log(opt_time_str)
 
 
         return
