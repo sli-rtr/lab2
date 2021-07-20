@@ -3,16 +3,30 @@
 # this program returns the experimental accel and jerk limits
 # command line arguments get_limits(filename, ip, safety margin)
 
-import sys, os, time
+# from __future__ import print_function
+# from __future__ import division
+
+import sys
+# sys.path.append('/home/samuelli/lab2/accel_jerk/rtr_control_ros/')
+# import rospy
+# from rtr_control_ros.srv import *
+# from rtr_control_ros.msg import *
+
+
+
+
+import os, time
 from datetime import datetime
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import shutil
 from pathlib import Path, PurePath
-from scipy.optimize import minimize
-import scipy.optimize
+# import os.path
+# from scipy.optimize import minimize
+# import scipy.optimize
 # from scipy.optimize import differential_evolution
 import matplotlib.pyplot as plt
+import numpy as np
 
 from rtr_appliance.PythonApplianceCommander import PythonApplianceCommander
 import update_limits
@@ -20,14 +34,16 @@ import compare_data
 from ApiHelper import ApiHelper
 import CommonOperations as cmn_ops
 
-from rtr_control_ros.log_plots import *
-from rtr_control_ros.robot_logs import RobotLogs
+# from rtr_control_ros.log_plots import *
+# from rtr_control_ros.robot_logs import RobotLogs
 
-def LaunchMoveToHub(cmdr,workstate,hub,speed,corner_smoothing,project):
-    # Execute this in a thread (MoveToHub function call)
-    res,seq = cmdr.MoveToHub(workstate,hub,speed,corner_smoothing,project_name=project)
-    code = cmdr.WaitForMove(seq)
-    return code
+
+
+# def LaunchMoveToHub(cmdr,workstate,hub,speed,corner_smoothing,project):
+#     # Execute this in a thread (MoveToHub function call)
+#     res,seq = cmdr.MoveToHub(workstate,hub,speed,corner_smoothing,project_name=project)
+#     code = cmdr.WaitForMove(seq)
+#     return code
 
 class limitTester():
     replan_attempts = 1
@@ -38,8 +54,8 @@ class limitTester():
         # RTR Controller that control the robot/s or simulation
         self.initialized = False
         self.init_logging(fp)
-        self.log(f'Replan Attempts: {self.replan_attempts}')
-        self.log(f'Move Timeout: {self.timeout}')
+        self.log('Replan Attempts: {}'.format(self.replan_attempts))
+        self.log('Move Timeout: {}'.format(self.timeout))
 
         self.ip_addr = ip
         self.cmdr = PythonApplianceCommander(self.ip_addr, 9999)
@@ -67,7 +83,7 @@ class limitTester():
         self.fp.write('\n')
 
     def log(self,msg):
-        log_msg = f'[{datetime.now()}] {msg}\n'
+        log_msg = '[{}] {}\n'.format(datetime.now(), msg)
         self.fp.write(log_msg)
         print(log_msg)
 
@@ -81,7 +97,7 @@ class limitTester():
             self.end_time = time.time()
             self.unfinished = False
             self.thread = None
-            self.log(f'Project {self.project} has finished!')
+            self.log('Project {} has finished!'.format(self.project))
         else:
             hub = hub_list[hub_idx]
             future = self.executor.submit(self.LaunchPickAndPlace,self.cmdr,workstate,hub, self.speed,self.corner_smoothing,project)
@@ -92,35 +108,38 @@ class limitTester():
         if self.cmdr.GetMode()[1].strip() == 'FAULT':
             cmn_ops.attempt_fault_recovery(self.cmdr,self.project_info,self.group_name,hub=self.hub_list[0])
 
-        self.log(f'Retracting project {self.project} to staging!')
+        self.log('Retracting project {} to staging!'.format(self.project))
         project = self.project
         workstate = 'default_state'
         hub = self.hub_list[0]
-        future = self.executor.submit(LaunchMoveToHub,self.cmdr,workstate,hub,self.speed,self.corner_smoothing,project)
+        future = self.executor.submit(self.LaunchPickAndPlace,self.cmdr,workstate,hub,self.speed,self.corner_smoothing,project)
         self.thread = future
 
     def add_group(self,group):
         '''
-        parameters
-        group: name of group
-        '''
-        self.group_name = group
+        This function adds the group to the rapidplan interface and makes sure it is unloaded.
 
+        Parameters:
+            group (string): name of group
+        '''
         # Create a deconfliction group
-        if self.group_name not in self.helper.get_installed_groups():
+        if group not in self.helper.get_installed_groups():
             self.log('Adding group')
-            self.group = self.helper.post_create_group(self.group_name)
+            self.helper.post_create_group(self.group_name)
 
         # unload group if it is loaded already
         if self.helper.get_group_info()[self.group_name]['loaded'] == True:
             self.log('Unloading group')
             self.helper.put_unload_group(self.group_name)
 
-    def add_project(self,proj,controller):
+    def add_project(self,proj,controller=1,ip='192.168.1.19'):
         '''
-        parameters
-        proj: path to zip file '../somedir/project.zip'
-        controller: use internal simulated 1 or robot controller 0
+        This function loads a project, adds it to the group, and sets the parameters for controller type
+
+        Parameters:
+            proj (string): path to zip file '../somedir/project.zip'
+            controller (int): use internal simulated 1 or robot controller 0
+            ip (string): ip address of robot controller
         '''
         # should check if project exists already-remove if so??
         project_list = self.helper.get_installed_projects()
@@ -130,7 +149,7 @@ class limitTester():
             # upload project
             self.helper.post_install_project(proj)
 
-            # wait until project added and fully loaded... hacky shit
+            # wait until project added and fully loaded...
             while len(self.helper.get_installed_projects()) == len(project_list):
                 time.sleep(1)
             time.sleep(2)
@@ -142,32 +161,29 @@ class limitTester():
             self.log('Project already added, proceeding')
 
         # set parameters of project
-        if controller == 0:
         # set connection type: 0 for robot controller, 1 for simulated, 2 for third party sim
-            self.helper.patch_robot_params(self.project, {'connection_type':0})
-            self.helper.patch_robot_params(self.project, {"robot_params":{
-                "bool_params":{"using_urcap":False},
-                "double_params":{},
-                "float_params":{"max_tool_speed":100},
-                "int_params":{"urcap_float_register":0},
-                "string_params":{"robot_address":"192.168.1.19","sim_ip_address":"127.0.0.1"},
-                "uint_params":{"sim_command_port":30003,"sim_data_port":30004}
-                }})
-        else:
-            self.helper.patch_robot_params(self.project, {'connection_type':1}) # internal simulated
-            self.helper.patch_robot_params(self.project, {"robot_params":{
-                "bool_params":{"using_urcap":False},
-                "double_params":{},
-                "float_params":{"max_tool_speed":100},
-                "int_params":{"urcap_float_register":0},
-                "string_params":{"robot_address":"192.168.1.19","sim_ip_address":"127.0.0.1"},
-                "uint_params":{"sim_command_port":30003,"sim_data_port":30004}
-                }})
+        self.helper.patch_robot_params(self.project, {'connection_type':controller})
+        self.helper.patch_robot_params(self.project, {"robot_params":{
+            "bool_params":{"using_urcap":False},
+            "double_params":{},
+            "float_params":{"max_tool_speed":100},
+            "int_params":{"urcap_float_register":0},
+            "string_params":{"robot_address":ip,"sim_ip_address":"127.0.0.1"},
+            "uint_params":{"sim_command_port":30003,"sim_data_port":30004}
+            }})
 
     # def cancel_move(self,workstate,project):
     #     self.cmdr.CancelMove('default_state',self.project)
 
     def load_run_through_hubs(self):
+        '''
+        This function loads the group, identifies the hubs and moves from the first to the last hub
+
+        Parameters:
+            proj (string): path to zip file '../somedir/project.zip'
+            controller (int): use internal simulated 1 or robot controller 0
+            ip (string): ip address of robot controller
+        '''
         # get hubs
         self.group_info = self.helper.get_group_info()
         self.project_info = self.helper.get_project_info(self.group_info[self.group_name]['projects'])
@@ -191,7 +207,7 @@ class limitTester():
         self.log('Startup sequence...')
         resp = cmn_ops.startup_sequence(self.cmdr,self.project_info,self.group_name)
         if resp != 0:
-            print(f'Startup sequence failed with error code: {resp}')
+            print('Startup sequence failed with error code: {}'.format(resp))
             return
 
         # Put each robot on the roadmap
@@ -211,7 +227,7 @@ class limitTester():
         self.hub_idxs = 0
         self.interlocking = False
 
-        self.log(f'Beginning hub move task...')
+        self.log('Beginning hub move task...')
         self.start_time = time.time()
 
         self.pick_and_place_part()
@@ -224,7 +240,7 @@ class limitTester():
                     if not self.interlocking:
                         # If your previous move was not a retraction, that means you completed a pick and place move
                         # and need to increase the hub idx
-                        self.log(f'Project {self.project} completed move to {self.hub_list[self.hub_idxs]}!')
+                        self.log('Project {} completed move to {}!'.format(self.project, self.hub_list[self.hub_idxs]))
                         self.hub_idxs += 1
                     self.pick_and_place_part()
                     self.interlocking = False
@@ -233,18 +249,28 @@ class limitTester():
                     self.retract_to_staging()
                     self.interlocking = True
 
-        hub_time_str = f'{self.project} hub move task took: {self.end_time-self.start_time}'
+        hub_time_str = '{} hub move task took: {}'.format(self.project, self.end_time-self.start_time)
         self.log(hub_time_str)
 
     # def run_test(self,proj,controller,reference):
     #     return
 
-    def save_bin(self, accel, jerk):
+    def save_bin(self, path, accel, jerk):
+        '''
+        TODO: remove hardcoded os path
+
+        This function takes the automatically generated bin file in rapidplan/install/var/log/rtr/robots/[project].bin and
+        copies it to another directory with the updated name [project]_[acceleration]_[jerk].bin
+
+        Parameters:
+            path (string): path to bin file
+            accel (float): Tested acceleration value
+            jerk (float): Tested jerk value
+        '''
         # save bin BEFORE deleting project??
         # create/prompt for directory
         # bins located at ~/rapidplan/install/var/log/rtr/robots/[project].bin
         # do megadebs have bin files?
-        self.path_to_bin = os.path.join('/home/samuelli/rapidplan/install/var/log/rtr/robots/', self.project + '.bin')
         aj_name = os.path.join(self.project+'_'+str(accel)+'_'+str(jerk)+'.bin')
         # check bin exists
         print(self.path_to_bin)
@@ -258,9 +284,19 @@ class limitTester():
             self.log('Bin does not exist, skipping')
 
     def binary_search(self, proj, controller, reference, accel, mse, val_found):
+        '''
+        This function searches for the global minima MSE and its corresponding acceleration
+
+        Parameters:
+            proj (string): path to zip file '../somedir/project.zip'
+            controller (int): use internal simulated 1 or robot controller 0
+            reference (string): path to reference trajectory bin file
+            accel (float): acceleration value being tested
+            mse (float): jerk value being tested
+            val_found (int[self.num_joints]): keeps track of whether the min value has been found for a joint
+        '''
         midpoints = np.zeros((self.num_joints, 3))
         midpoint_mse = {}
-
         midpoint_set = set()
 
         if sum(val_found) == self.num_joints:
@@ -270,25 +306,19 @@ class limitTester():
             if val_found[i]:
                 continue
             # how precise we need to be
-            if accel[i][4]-accel[i][0] > 1:
-                # midpoint = (accel[i][2]+accel[i][0])/2
-                # midpoints[i] = (accel[i][4]+accel[i][0])/2
-                midpoints[i][1] = round((accel[i][4]+accel[i][0])/2)
-                midpoints[i][0] = round((accel[i][0]+midpoints[i][1])/2)
-                midpoints[i][2] = round((accel[i][4]+midpoints[i][1])/2)
+            high = accel[i][4]
+            low = accel[i][0]
+            if high-low > 2:
+                midpoints[i][1] = round((high+low)/2)
+                midpoints[i][0] = round((low+midpoints[i][1])/2)
+                midpoints[i][2] = round((high+midpoints[i][1])/2)
 
-                midpoint_set.add(midpoints[i][0])
-                midpoint_set.add(midpoints[i][1])
-                midpoint_set.add(midpoints[i][2])
+                midpoint_set.update(midpoints[i])
             else:
                 val_found[i] = 1
-                # midpoints[i] = 0
-                # return lower? because mid is cleared to 0
                 print('joint',i,'MSE done')
                 print('accel',accel[i][0])
                 # continue
-
-        # midpoint_set = set(midpoints)
 
         for i in midpoint_set:
             # skip 0 values, means we are within threshold
@@ -298,7 +328,7 @@ class limitTester():
             # update_limits.parse(proj, i, 5000.0)
             #
             # # add group
-            # self.add_group('accel_jerk_test')
+            # self.add_group(self.group_name)
             # # load project and add to group the first time
             # self.add_project(proj, controller)
             # # load group and run through hubs
@@ -315,8 +345,12 @@ class limitTester():
             # # get measure of difference between commanded route and reference
             dataname = os.path.join('./bin_temp/'+'isolated_joint_move_Robot1'+'_'+str(i)+'_'+str(5000.0)+'.bin')
 
-            pos, vel, t = compare_data.get_data(reference, dataname)
-            mse_mid = compare_data.get_mse(pos)
+            # pos, vel, t = compare_data.get_data(reference, dataname)
+            pos_r, vel_r, t_r = compare_data.get_data(reference)
+            pos_d, vel_d, t_d = compare_data.get_data(dataname)
+            # pos = [pos_r, pos_d]
+            # mse = compare_data.get_mse(pos)
+            mse_mid = compare_data.get_mse(pos_r, pos_d)
             # print(mse_mid)
 
             # # remove project from deconf group
@@ -331,115 +365,72 @@ class limitTester():
         # print(midpoint_mse)
 
         for i in range(self.num_joints):
+            # if joint done
             if val_found[i]:
                 continue
-            # # if joint done
-            # if accel[i][1] == 0:
-            #     continue
-            # print(accel)
-            # print(midpoints)
-            # print(mse)
-            # print(midpoint_mse)
-            accel[i][1] = midpoints[i][0]
-            accel[i][2] = midpoints[i][1]
-            accel[i][3] = midpoints[i][2]
+            accel[i][1:4] = midpoints[i][0:3]
             # if midpoints[i] == 0: # bad fix... its because midpoint_mse = 0 does not exist in dict
             #     mse[i][1] = 0
             # else:
-            mse[i][1] = midpoint_mse[midpoints[i][0]][i]
-            mse[i][2] = midpoint_mse[midpoints[i][1]][i]
-            mse[i][3] = midpoint_mse[midpoints[i][2]][i]
+            mse[i][1:4] = [midpoint_mse[midpoints[i][j]][i] for j in range(0,3)]
 
         # print(accel)
         # print(mse)
 
         # mse and accel_search_vals are known, we have a [low, mid, high] for each joint
         for i in range(self.num_joints):
+            # if joint done
             if val_found[i]:
                 continue
-            # # # if joint done
-            # # if accel[i][1] == 0:
-            # #     continue
-            # if mse[i][0] < mse[i][2]:
-            #     mse[i][2] = mse[i][1]
-            #     accel[i][2] = accel[i][1]
-            #     # print('searching', accel_search_vals[i][0], accel_search_vals[i][1])
-            #     # binary_search(accel_search_vals[i][0], accel_search_vals[i][1])
-            # else:
-            #     mse[i][0] = mse[i][1]
-            #     accel[i][0] = accel[i][1]
-            #     # print('searching', accel_search_vals[i][1], accel_search_vals[i][2])
-            #     # binary_search(accel_search_vals[i][1], accel_search_vals[i][2])
-            #
-            # mse[i][1] = 0
-            # accel[i][1] = 0
 
             # print(accel)
             # print(mse[i])
+            a, b, c, d, e = mse[i]
+            v, w, x, y, z = accel[i]
 
-            if mse[i][0] >= mse[i][1] and mse[i][1] >= mse[i][2] and mse[i][4] >= mse[i][3] and mse[i][3] >= mse[i][2]:
-                mse[i][0] = mse[i][1]
-                mse[i][4] = mse[i][3]
-
-                accel[i][0] = accel[i][1]
-                accel[i][4] = accel[i][3]
-                print("first")
-            elif mse[i][0] >= mse[i][1] and mse[i][1] <= mse[i][2] and mse[i][4] >= mse[i][3] and mse[i][3] >= mse[i][2]:
-                mse[i][4] = mse[i][2]
-                mse[i][2] = mse[i][1]
-
-                accel[i][4] = accel[i][2]
-                accel[i][2] = accel[i][1]
-                print('second')
-            elif mse[i][0] >= mse[i][1] and mse[i][1] >= mse[i][2] and mse[i][4] >= mse[i][3] and mse[i][3] <= mse[i][2]:
-                mse[i][0] = mse[i][2]
-                mse[i][2] = mse[i][3]
-
-                accel[i][0] = accel[i][2]
-                accel[i][2] = accel[i][3]
-                print('third')
-            elif mse[i][1] > mse[i][0]:
-                mse[i][0] = mse[i][1]
-                accel[i][0] = accel[i][1]
-            elif mse[i][2] > mse[i][1] or mse[i][2] > mse[i][3]:
-                if mse[i][1] > mse[i][3]:
-                    mse[i][0] = mse[i][2]
-                    mse[i][2] = mse[i][3]
-
-                    accel[i][0] = accel[i][2]
-                    accel[i][2] = accel[i][3]
-                else:
-                    mse[i][4] = mse[i][2]
-                    mse[i][3] = mse[i][1]
-
-                    accel[i][4] = accel[i][2]
-                    accel[i][3] = accel[i][1]
-            elif mse[i][3] > mse[i][4]:
-                mse[i][4] = mse[i][3]
-                accel[i][4] = accel[i][3]
+            # shrink both sides
+            if a >= b >= c and e >= d >= c:
+                a, e = b, d
+                v, z = w, y
+                # print("first")
+            # search left side
+            elif (a >= b < c and e >= d >= c) or (c > b or c > d and b < d):
+                e, c = c, b
+                z, x, = x, w
+                # print('second')
+            # search right side
+            elif (a >= b >= c and e >= d < c) or (c > b or c > d and b >= d):
+                a, c = c, d
+                v, x = x, y
+                # print('third')
+            # catch local minima/non monotonic parts
+            elif b > a:
+                # print('fourth')
+                a = b
+                v = w
+            elif d > e:
+                # print('sixth')
+                e = d
+                z = y
             else:
-                print('fail')
-                print(mse[i])
-                print(accel[i])
-            mse[i][1] = 0
-            mse[i][3] = 0
-            accel[i][1] = 0
-            accel[i][3] = 0
+                print('shrinking bounds failed with mse {}, accel {}'.format(mse[i], accel[i]))
+            b, d = 0, 0
+            w, y = 0, 0
 
-        print(accel)
+            mse[i] = [a,b,c,d,e]
+            accel[i] = [v,w,x,y,z]
+
+        # print(accel)
         # print(mse)
 
         # plt.plot(accel[4], mse[4])
-        plt.show()
+        # plt.show()
 
         self.binary_search(proj, controller, reference, accel, mse, val_found)
 
-        # return
-
-
     # for scipy minimize function to compute mse
     def compute_mse(self, accel, proj, controller, reference, joint, jerk=5000.0):
-        self.log(f'Computing MSE for accel: {accel} jerk: {jerk}')
+        self.log('Computing MSE for accel: {} jerk: {}'.format(accel, jerk))
 
         # returns mse value for single joint at a/j
         update_limits.parse(proj, accel, jerk)
@@ -494,7 +485,7 @@ class limitTester():
         # self.accel = [2.0, 2.0] # [low, high]
         # self.jerk = [2.0, 2.0]
         # set project urdf
-        # update_limits.parse(proj, accel_max, jerk_max)
+        update_limits.parse(proj, accel_max, jerk_max)
 
         self.speed = 0.99
         self.corner_smoothing = 0.0
@@ -545,40 +536,43 @@ class limitTester():
 
         max_found = []
 
+        self.group_name = 'accel_jerk_test'
+
         while True:
-            # # add group
-            # self.add_group('accel_jerk_test')
-            # # load project and add to group the first time
-            # self.add_project(proj, controller)
-            # # load group and run through hubs
-            # self.load_run_through_hubs()
-            #
-            # # end operation mode, put into config mode
-            # self.helper.put_config_mode()
-            # # unload group
-            # self.helper.put_unload_group(self.group_name)
-            #
-            # self.save_bin(accel_max, jerk_max)
+            # add group
+            self.add_group(self.group_name)
+            # load project and add to group the first time
+            self.add_project(proj, controller)
+            # load group and run through hubs
+            self.load_run_through_hubs()
 
-            # # test data here
-            # # get measure of difference between commanded route and reference
-            dataname = os.path.join('./bin_temp/'+'isolated_joint_move_Robot1'+'_'+str(accel_max)+'_'+str(5000.0)+'.bin')
+            # end operation mode, put into config mode
+            self.helper.put_config_mode()
+            # unload group
+            self.helper.put_unload_group(self.group_name)
 
+            self.path_to_bin = os.path.join('/home/samuelli/rapidplan/install/var/log/rtr/robots/', self.project + '.bin')
+            self.save_bin(self.path_to_bin, accel_max, jerk_max)
 
+            # test data here
+            # get measure of difference between commanded route and reference
+            # dataname = os.path.join('./bin_temp/'+'isolated_joint_move_Robot1'+'_'+str(accel_max)+'_'+str(5000.0)+'.bin')
 
-            pos, vel, t = compare_data.get_data(reference, dataname)
-            mse = compare_data.get_mse(pos)
+            pos_r, vel_r, t_r = compare_data.get_data(reference)
+            pos_d, vel_d, t_d = compare_data.get_data(self.path_to_bin)
+            pos = [pos_r, pos_d]
+            mse = compare_data.get_mse(pos_r, pos_d)
             self.num_joints = len(pos[0])
             print(accel_max)
             print(mse)
 
-            # # remove project from deconf group
-            # self.helper.delete_proj_from_group(self.group_name, self.project)
-            #
-            # # unload project
-            # self.helper.delete_project(self.project)
+            # remove project from deconf group
+            self.helper.delete_proj_from_group(self.group_name, self.project)
 
-            # print("-------------------------------\n\n\n\nSUCCEEDED\n\n\n\n-------------------------")
+            # unload project
+            self.helper.delete_project(self.project)
+
+            print("-------------------------------\n\n\n\nSUCCEEDED\n\n\n\n-------------------------")
             # print(accel_max)
             # print(jerk_max)
 
@@ -638,8 +632,8 @@ class limitTester():
             # else
                 # set high to midpoint
 
-            # # edit project urdf
-            # update_limits.parse(proj, accel_max, jerk_max)
+            # edit project urdf
+            update_limits.parse(proj, accel_max, jerk_max)
 
             # break
 
@@ -672,13 +666,12 @@ class limitTester():
         # return determined values
 
 
-        # # clean up stuff
-        # # delete deconfliction group
-        # self.helper.delete_group(self.group_name)
+        # clean up stuff
+        # delete deconfliction group
+        self.helper.delete_group(self.group_name)
 
-        opt_time_str = f'optimization task took: {time.time()-opt_time_start} seconds'
+        opt_time_str = 'optimization task took: {} seconds'.format(time.time()-opt_time_start)
         self.log(opt_time_str)
-
 
         return
 

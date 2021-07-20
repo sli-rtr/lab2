@@ -119,7 +119,7 @@ class ApiHelper(object):
         '''
         data = {'name': group_name}
         self.send_post_request(self.groups, data)
-        return group_name
+        # return group_name
 
     def post_install_project(self, fname):
         '''

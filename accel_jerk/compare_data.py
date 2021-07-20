@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 
 # from rtr_control_ros.log_plots import *
-from rtr_control_ros.log_plot_utils import *
+# from rtr_control_ros.log_plot_utils import *
 from rtr_control_ros.robot_logs import RobotLogs
 
 RAD2DEG = 180 / np.pi
@@ -35,11 +35,9 @@ def plot_data(time, data, mse):
     # different subplot joint charts
     for i in range(len(data[0])):
         ax = plt.subplot(len(data[0]),1,i+1)
-        # print('new joint')
 
         # different lines on each subplot
         for j in range(len(data)):
-            # print('new line')
             # print("time", len(time[j][i]))
             # print("pos", len(data[j][i]))
             plt.plot(time[j][i], data[j][i])
@@ -47,61 +45,53 @@ def plot_data(time, data, mse):
         plt.title("Joint: {}, MSE: {:.3g}".format(i, mse[i]))
     return
 
-def get_mse(data):
+def get_mse(data, pred):
     # returns mse of each joint rtr control compared to teach pendant
     mse = []
-    for i in range(len(data[0])):
-        first = np.array(data[0][i])
-        second = np.array(data[1][i])
+    for i in range(len(data)):
+        j_data = np.array(data[i])
+        j_pred = np.array(pred[i])
         # zero-pad arrays to be same length
-        if len(first)<len(second):
-            first.resize(len(second))
+        if len(j_data)<len(j_pred):
+            j_data.resize(len(j_pred))
         else:
-            second.resize(len(first))
+            j_pred.resize(len(j_data))
 
-        mse.append(mean_squared_error(first, second))
+        mse.append(mean_squared_error(j_data, j_pred))
     return mse
 
-def get_data(fname, fname2):
-    files = [fname, fname2]
+def get_data(fname):
+    fpath = PurePath(fname)
 
-    pos,vel,time = [],[],[]
+    robot_name = fpath.stem
+    rlogs = RobotLogs(robot_name)
+    rlogs.extract_data(fname)
 
-    for f in files:
-        fpath = PurePath(f)
+    # assumes t interval is relatively constant
+    t, p_c, p_r = rlogs.get_pos_data()
+    _, v_c, v_r = rlogs.get_vel_data()
+    start, end = get_end_times(v_r, 0.1)
 
-        robot_name = fpath.stem
-        rlogs = RobotLogs(robot_name)
-        rlogs.extract_data(f)
+    p_r = np.transpose(p_r)
+    # p_c = np.transpose(p_c)
 
-        # assumes t interval is relatively constant
-        t, p_c, p_r = rlogs.get_pos_data()
-        _, v_c, v_r = rlogs.get_vel_data()
-        start, end = get_end_times(v_r, 0.1)
+    p_r_trim, v_r_trim = [], []
+    t_trim = []
 
-        # print(robot_name)
-        # print(t[0])
-        # print(np.shape(p_r))
-        p_r = np.transpose(p_r)
-        # p_c = np.transpose(p_c)
-        # print(np.shape(p_r))
+    # extract only interesting data
+    for i in range(len(p_r)):
+        # print(start[i],end[i])
+        # print(end[i]-start[i])
+        p_r_trim.append(p_r[i][start[i]:end[i]])
+        v_r_trim.append(v_r[i][start[i]:end[i]])
+        t_trim.append([j-t[start[i]] for j in t[start[i]:end[i]]]) # normalize times
 
-        p_r_trim, v_r_trim = [], []
-        t_trim = []
+    # pos.append(p_r_trim)
+    # vel.append(v_r_trim)
+    # time.append(t_trim)
 
-        # extract only interesting data
-        for i in range(len(p_r)):
-            # print(start[i],end[i])
-            # print(end[i]-start[i])
-            p_r_trim.append(p_r[i][start[i]:end[i]])
-            v_r_trim.append(v_r[i][start[i]:end[i]])
-            t_trim.append([j-t[start[i]] for j in t[start[i]:end[i]]]) # normalize times
-
-        pos.append(p_r_trim)
-        vel.append(v_r_trim)
-        time.append(t_trim)
-
-    return pos, vel, time
+    # return pos, vel, time
+    return p_r_trim, v_r_trim, t_trim
 
 def main():
     parser = argparse.ArgumentParser(description="Basic plotting script for control data")
@@ -120,21 +110,17 @@ def main():
     fname = args.file
     fname2 = args.file2
 
-
-    pos,vel,time = get_data(fname, fname2)
+    pos,vel,time = [],[],[]
+    pos = [get_data(fname)[0], get_data(fname2)[0]]
+    time = [get_data(fname)[2], get_data(fname2)[2]]
 
     # get MSE of pos
-    mse = get_mse(pos)
+    mse = get_mse(pos[0], pos[1])
 
     # plot pos
     plot_data(time, pos, mse)
     # plot_data(t_trim, vel)
 
-    # print("Plotting all trajectories")
-    # construct_trajectory_plots_isolated(rlogs, type='pvaj', in_degrees=False)
-    # plt.show()
-    # construct_trajectory_plots_isolated(rlogs2, type='pvaj', in_degrees=False)
-    #
     plt.show()
 
 if __name__ == "__main__":
